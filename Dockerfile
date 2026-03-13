@@ -1,39 +1,32 @@
-# --- ETAPA 1: Build (Compilación) ---
+# --- ETAPA 1: Build ---
 FROM node:20-alpine AS builder
-
 WORKDIR /app
-
-# Instalar dependencias primero para aprovechar la caché de Docker
 COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile
-
-# Copiar todo el código fuente
 COPY . .
-
-# Generar la carpeta /dist (TypeScript a JavaScript)
 RUN yarn build
 
-# --- ETAPA 2: Runner (Producción) ---
+# --- ETAPA 2: Runner ---
 FROM node:20-alpine AS runner
-
 WORKDIR /app
-
-# Variable de entorno para optimizar Node.js
 ENV NODE_ENV=production
 
-# 1. Copiar lo necesario para ejecutar la app
+# 1. Copiar lo esencial
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/yarn.lock ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 
-# 2. Copiar archivos críticos para que Drizzle ORM funcione en el servidor
-# Estos son los que te daban error al no estar presentes
+# 2. Copiar archivos para Drizzle y Seeding
 COPY --from=builder /app/drizzle.config.ts ./
 COPY --from=builder /app/db ./db
+COPY --from=builder /app/seed-admin.ts ./  # <--- IMPORTANTE: Copiar el seed
 
-# Exponer el puerto configurado en tu .env
+# 3. Copiar y preparar el script de entrada
+COPY entrypoint.sh ./
+RUN chmod +x entrypoint.sh
+
 EXPOSE 4000
 
-# Comando para iniciar el servidor
-CMD ["node", "dist/index.js"]
+# Cambiamos el CMD para usar el script
+ENTRYPOINT ["./entrypoint.sh"]

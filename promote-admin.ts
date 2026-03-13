@@ -1,5 +1,5 @@
 // "dev": "ts-node-dev index.ts",
-// http://localhost:4000
+// https://pybingenieriachile.cl/api-seguro
 import bcrypt from 'bcrypt';
 import { db } from './db';
 import { users } from './db/schema';
