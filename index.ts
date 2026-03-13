@@ -127,7 +127,7 @@ const generatePDFBuffer = (s: any): Promise<Buffer> => {
 
     doc.moveDown(10);
     const signY = doc.y;
-    
+
     if (s.signature && s.signature.startsWith('data:image')) {
       try {
         const base64Data = s.signature.split(';base64,').pop();
@@ -403,6 +403,29 @@ app.put('/api/admin/submissions/:id', authenticateAdmin, async (req, res) => {
   } catch (error) {
     console.error("Error al actualizar en DB:", error);
     res.status(500).json({ error: 'Error interno al procesar la actualización' });
+  }
+});
+
+app.delete('/api/admin/submissions/:id', authenticateAdmin, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const targetId = Number(id);
+
+    // ELIMINACIÓN FÍSICA: El registro desaparece de la tabla
+    const result = await db.delete(submissions)
+      .where(eq(submissions.id, targetId))
+      .returning(); // .returning() nos confirma si encontró algo
+
+    if (result.length === 0) {
+      return res.status(404).json({ error: 'Registro no encontrado' });
+    }
+
+    console.log(`🔥 Registro #${targetId} ELIMINADO permanentemente.`);
+    res.json({ success: true, message: 'Registro borrado de la base de datos' });
+  } catch (error) {
+    console.error("Error en eliminación física:", error);
+    res.status(500).json({ error: 'No se pudo eliminar el registro permanentemente' });
   }
 });
 
