@@ -2,17 +2,9 @@
 FROM node:20-alpine AS builder
 
 WORKDIR /app
-
-# Copiamos archivos de dependencias de Yarn
 COPY package.json yarn.lock ./
-
-# Instalamos todas las dependencias
 RUN yarn install --frozen-lockfile
-
-# Copiamos el resto del código
 COPY . .
-
-# Compilamos de TypeScript a JavaScript
 RUN yarn build
 
 # --- ETAPA 2: Producción ---
@@ -23,14 +15,18 @@ WORKDIR /app
 # Definimos variables de entorno
 ENV NODE_ENV=production
 
-# Copiamos solo las dependencias de producción y el código compilado
+# 1. Copiamos lo básico
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/yarn.lock ./
-COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
 
-# Exponemos el puerto
+# 2. AGREGADO: Copiamos el config de Drizzle y el esquema
+# Drizzle-kit necesita ver estos archivos .ts para funcionar
+COPY --from=builder /app/drizzle.config.ts ./
+COPY --from=builder /app/schema.ts ./ 
+# (Si tienes tus esquemas en una carpeta, usa: COPY --from=builder /app/src/schema ./src/schema)
+
 EXPOSE 4000
 
-# Comando para iniciar la aplicación desde la carpeta dist
 CMD ["node", "dist/index.js"]
