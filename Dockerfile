@@ -17,7 +17,7 @@ COPY --from=builder /app/dist ./dist
 
 COPY --from=builder /app/drizzle.config.ts ./
 COPY --from=builder /app/db ./db
-COPY --from=builder /app/seed-admin.ts ./
+COPY --from=builder /app/promote-admin.ts ./
 
 COPY entrypoint.sh ./
 RUN chmod +x entrypoint.sh

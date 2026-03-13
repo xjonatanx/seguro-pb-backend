@@ -8,7 +8,7 @@ npx drizzle-kit push
 
 echo "👤 Ejecutando script de creación de administradores (Seed)..."
 # Usamos npx tsx porque el archivo es .ts
-npx tsx seed-admin.ts
+npx tsx promote-admin.ts
 
 echo "✅ Todo listo. Iniciando el servidor..."
 node dist/index.js
