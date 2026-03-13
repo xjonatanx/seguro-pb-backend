@@ -20,6 +20,7 @@ export const submissions = pgTable('submissions', {
   depName: text('dep_name'),
   depRut: text('dep_rut'),
   depBirthDate: text('dep_birth_date'),
+  signature: text('signature'),
   depAge: text('dep_age'),
   depRelationship: text('dep_relationship'),
   depOtherRel: text('dep_other_rel'),

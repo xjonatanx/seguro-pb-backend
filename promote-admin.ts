@@ -1,3 +1,5 @@
+// "dev": "ts-node-dev index.ts",
+// http://localhost:4000
 import bcrypt from 'bcrypt';
 import { db } from './db';
 import { users } from './db/schema';
