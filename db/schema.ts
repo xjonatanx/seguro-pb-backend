@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, integer, timestamp, jsonb } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
@@ -28,6 +28,7 @@ export const submissions = pgTable('submissions', {
   depIsapreName: text('dep_isapre_name'),
   depEmail: text('dep_email'),
   depPhone: text('dep_phone'),
+  dependents: jsonb('dependents').$type<any[]>(),
   bankName: text('bank_name'),
   bankAccountType: text('bank_account_type'),
   bankAccountNumber: text('bank_account_number'),

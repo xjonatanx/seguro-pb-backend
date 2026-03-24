@@ -77,33 +77,72 @@ const generatePDFBuffer = (s: any): Promise<Buffer> => {
     doc.y = currentY + 10;
     doc.moveDown(1.5);
 
-    // 2. Datos de la Carga
-    doc.rect(50, doc.y, 512, 16).fill('#eeeeee').stroke('#cccccc');
-    doc.fillColor('black').font('Helvetica-Bold').fontSize(10).text('2. DATOS DE LA CARGA A INCORPORAR', 55, doc.y + 4);
-    doc.moveDown(1.5);
+    const drawSectionCargas = (doc: any, s: any) => {
+      const C_TEXT = '#1F2937';   // Negro/Gris oscuro
+      const C_BORDER = '#E5E7EB'; // Gris para bordes
+      const C_BG = '#F3F4F6';     // El gris de los demás items
 
-    currentY = doc.y;
-    currentY = drawRow('Nombre Completo:', s.depName, currentY);
-    currentY = drawRow('RUT:', s.depRut, currentY);
-    currentY = drawRow('Fecha de Nacimiento:', s.depBirthDate, currentY);
-    currentY = drawRow('Edad:', s.depAge ? s.depAge.toString() : '', currentY);
+      // 1. Encabezado de la Sección (Fondo Gris, Letra Negra)
+      doc.rect(50, doc.y, 512, 18).fill(C_BG).stroke(C_BORDER);
+      doc.fillColor(C_TEXT).font('Helvetica-Bold').fontSize(10).text('2. DATOS DE LAS CARGAS A INCORPORAR', 55, doc.y + 5);
+      doc.moveDown(1.5);
 
-    doc.font('Helvetica-Bold').fontSize(9).text('Parentesco:', 55, currentY);
-    const options = ['Cónyuge', 'Conviviente Civil', 'Hijo/a', 'Otro'];
-    let optX = 180;
-    options.forEach(opt => {
-      const isChecked = s.depRelationship === opt;
-      doc.rect(optX, currentY - 2, 10, 10).stroke();
-      if (isChecked) doc.font('Helvetica-Bold').text('X', optX + 2, currentY - 1);
-      doc.font('Helvetica').fontSize(8).text(opt, optX + 14, currentY);
-      optX += 90;
-    });
+      const listaCargas = Array.isArray(s.dependents) ? s.dependents : [];
 
-    currentY += 20;
-    const saludText = (s.depHealthSystem || '') + (s.depIsapreName ? ` (${s.depIsapreName})` : '');
-    currentY = drawRow('Sistema / Plan de Salud:', saludText, currentY);
-    currentY = drawRow('Correo Electrónico:', s.depEmail, currentY);
-    currentY = drawRow('Teléfono de Contacto:', s.depPhone, currentY);
+      if (listaCargas.length === 0) {
+        doc.fillColor('#6B7280').font('Helvetica-Oblique').fontSize(9).text('No se registraron cargas familiares.', 60);
+        doc.moveDown(2);
+        return;
+      }
+
+      listaCargas.forEach((dep: any, index: number) => {
+        if (doc.y > 620) doc.addPage();
+
+        const startY = doc.y;
+        const cardWidth = 512;
+        const cardHeight = 95;
+
+        // 2. Tarjeta principal (Fondo blanco, borde gris)
+        doc.roundedRect(50, startY, cardWidth, cardHeight, 8).fill('white').stroke(C_BORDER);
+
+        // 3. Mini-encabezado de la carga (Fondo Gris, Letra Negra)
+        doc.rect(50, startY, 80, 15).fill(C_BG).stroke(C_BORDER);
+        doc.fillColor(C_TEXT).font('Helvetica-Bold').fontSize(8).text(`CARGA N°${index + 1}`, 55, startY + 4);
+
+        // 4. Nombre destacado en Negro
+        doc.fillColor(C_TEXT).font('Helvetica-Bold').fontSize(9).text(dep.nombre?.toUpperCase() || 'SIN NOMBRE', 140, startY + 4, { width: 350, align: 'right' });
+
+        // --- GRID DE DATOS (Mantiene el mismo estilo ordenado) ---
+        let yRow = startY + 25;
+        const col1 = 60;
+        const col2 = 300;
+
+        const drawField = (label: string, value: string, x: number, y: number) => {
+          doc.fillColor('#6B7280').font('Helvetica-Bold').fontSize(7).text(label, x, y);
+          doc.fillColor(C_TEXT).font('Helvetica').fontSize(8).text(value || '---', x, y + 9);
+        };
+
+        drawField('RUT', dep.rut, col1, yRow);
+        drawField('FECHA NACIMIENTO', dep.nacimiento, col2, yRow);
+
+        yRow += 22;
+        drawField('EDAD', (dep.edad || '0') + ' años', col1, yRow);
+        const rel = dep.parentesco === 'Otro' ? `Otro (${dep.otroParentesco || ''})` : dep.parentesco;
+        drawField('PARENTESCO', rel, col2, yRow);
+
+        yRow += 22;
+        const salud = dep.prevision === 'Isapre' ? `Isapre (${dep.isapreNombre || ''})` : 'FONASA';
+        drawField('SISTEMA SALUD', salud, col1, yRow);
+        drawField('CONTACTO', `${dep.telefono || ''} | ${dep.email || ''}`, col2, yRow);
+
+        doc.y = startY + cardHeight + 10;
+      });
+
+      // Resetear color para las siguientes secciones
+      doc.fillColor('black');
+    };
+
+    drawSectionCargas(doc, s);
 
     // --- PÁGINA 2 ---
     doc.addPage();
@@ -250,6 +289,9 @@ app.post('/api/auth/login', async (req, res) => {
       alreadySubmitted: existingSubmission?.status === 'submitted'
     });
   } catch (error) {
+    // AGREGA ESTA LÍNEA PARA VER EL ERROR REAL:
+    console.error("DETALLE DEL ERROR EN LOGIN:", error);
+
     res.status(500).json({ error: 'Error al procesar el ingreso' });
   }
 });
@@ -275,39 +317,44 @@ app.get('/api/submissions/:userId', authenticateUser, async (req, res) => {
  */
 app.post('/api/submissions/save', authenticateUser, async (req, res) => {
   const { userId, data, finalize } = req.body;
+
   try {
     const valuesToSave = {
-      userId,
+      userId: Number(userId),
+      // 1. Datos del Trabajador
       workerName: data.worker.nombre,
       workerRut: data.worker.rut,
       workerCargo: data.worker.cargo,
       workerArea: data.worker.area,
       workerEmail: data.worker.email,
       workerPhone: data.worker.telefono,
-      depName: data.dependent.nombre,
-      depRut: data.dependent.rut,
-      depBirthDate: data.dependent.nacimiento,
-      depAge: String(data.dependent.edad),
-      depRelationship: data.dependent.parentesco,
-      depHealthSystem: data.dependent.prevision,
-      depIsapreName: data.dependent.isapreNombre,
-      depEmail: data.dependent.email,
-      depPhone: data.dependent.telefono,
+
+      // 2. CARGAS (Ahora solo usamos el arreglo JSON)
+      // Eliminamos depName, depRut, depAge, etc., porque ahora van dentro de este array
+      dependents: data.dependents,
+
+      // 3. Datos Bancarios
       bankName: data.bank.banco,
       bankAccountType: data.bank.tipo,
       bankAccountNumber: data.bank.numero,
-      signature: data.signature, // <--- GUARDAR FIRMA
+      bankOtherType: data.bank.otroTipo, // Asegúrate de incluir este si lo agregamos
+
+      // 4. Firma y Estado
+      signature: data.signature,
       status: finalize ? 'submitted' : 'draft',
-      requestDate: data.fechaSolicitud
+      requestDate: data.fechaSolicitud,
+      updatedAt: new Date()
     };
 
+    // Guardar en la base de datos
     await db.insert(submissions).values(valuesToSave).onConflictDoUpdate({
       target: submissions.userId,
-      set: { ...valuesToSave, updatedAt: new Date() }
+      set: valuesToSave
     });
 
     // --- ENVÍO DE EMAIL AUTOMÁTICO ---
     if (finalize) {
+      // Nota: Asegúrate de que tu función generatePDFBuffer también use s.dependents ahora
       const pdfBuffer = await generatePDFBuffer(valuesToSave);
       await transporter.sendMail({
         from: '"Sistema Seguros P&B" <pybingenieria7@gmail.com>',
@@ -319,7 +366,11 @@ app.post('/api/submissions/save', authenticateUser, async (req, res) => {
     }
 
     res.json({ success: true });
-  } catch (e) { res.status(500).json({ error: 'Error al guardar' }); }
+  } catch (e) {
+    // IMPORTANTE: Imprime el error en la consola para saber qué falló si vuelve a pasar
+    console.error("ERROR CRÍTICO AL GUARDAR:", e);
+    res.status(500).json({ error: 'Error interno al guardar los datos' });
+  }
 });
 
 /**
@@ -381,20 +432,15 @@ app.put('/api/admin/submissions/:id', authenticateAdmin, async (req, res) => {
         workerArea: data.workerArea,
         workerEmail: data.workerEmail,
         workerPhone: data.workerPhone,
-        depName: data.depName,
-        depRut: data.depRut,
-        depBirthDate: data.depBirthDate,
-        depAge: String(data.depAge),
-        depRelationship: data.depRelationship,
-        depOtherRel: data.depOtherRel,
-        depHealthSystem: data.depHealthSystem,
-        depIsapreName: data.depIsapreName,
-        depEmail: data.depEmail,
-        depPhone: data.depPhone,
+        
+        // ESTA LÍNEA ES LA QUE REGISTRA LAS CARGAS:
+        dependents: data.dependents, 
+
         bankName: data.bankName,
         bankAccountType: data.bankAccountType,
         bankAccountNumber: data.bankAccountNumber,
-        status: data.status, // Aquí es donde RR.HH. cambia de borrador a recibido
+        bankOtherType: data.bankOtherType,
+        status: data.status,
         updatedAt: new Date()
       })
       .where(eq(submissions.id, Number(id)));
@@ -490,33 +536,73 @@ app.get('/api/admin/generate-pdf/:id', authenticateAdmin, async (req, res) => {
     doc.y = currentY + 10;
     doc.moveDown(1.5);
 
-    // 2. Datos de la Carga
-    doc.rect(50, doc.y, 512, 16).fill('#eeeeee').stroke('#cccccc');
-    doc.fillColor('black').font('Helvetica-Bold').fontSize(10).text('2. DATOS DE LA CARGA A INCORPORAR', 55, doc.y + 4);
-    doc.moveDown(1.5);
+    // --- 2. SECCIÓN DE CARGAS (REDISEÑO TOTAL) ---
+    const drawSectionCargas = (doc: any, s: any) => {
+      const C_TEXT = '#1F2937';   // Negro/Gris oscuro
+      const C_BORDER = '#E5E7EB'; // Gris para bordes
+      const C_BG = '#F3F4F6';     // El gris de los demás items
 
-    currentY = doc.y;
-    currentY = drawRow('Nombre Completo:', s.depName, currentY);
-    currentY = drawRow('RUT:', s.depRut, currentY);
-    currentY = drawRow('Fecha de Nacimiento:', s.depBirthDate, currentY);
-    currentY = drawRow('Edad:', s.depAge ? s.depAge.toString() : '', currentY);
+      // 1. Encabezado de la Sección (Fondo Gris, Letra Negra)
+      doc.rect(50, doc.y, 512, 18).fill(C_BG).stroke(C_BORDER);
+      doc.fillColor(C_TEXT).font('Helvetica-Bold').fontSize(10).text('2. DATOS DE LAS CARGAS A INCORPORAR', 55, doc.y + 5);
+      doc.moveDown(1.5);
 
-    doc.font('Helvetica-Bold').fontSize(9).text('Parentesco:', 55, currentY);
-    const options = ['Cónyuge', 'Conviviente Civil', 'Hijo/a', 'Otro'];
-    let optX = 180;
-    options.forEach(opt => {
-      const isChecked = s.depRelationship === opt;
-      doc.rect(optX, currentY - 2, 10, 10).stroke();
-      if (isChecked) doc.font('Helvetica-Bold').text('X', optX + 2, currentY - 1);
-      doc.font('Helvetica').fontSize(8).text(opt, optX + 14, currentY);
-      optX += 90;
-    });
+      const listaCargas = Array.isArray(s.dependents) ? s.dependents : [];
 
-    currentY += 20;
-    const saludText = (s.depHealthSystem || '') + (s.depIsapreName ? ` (${s.depIsapreName})` : '');
-    currentY = drawRow('Sistema / Plan de Salud:', saludText, currentY);
-    currentY = drawRow('Correo Electrónico:', s.depEmail, currentY);
-    currentY = drawRow('Teléfono de Contacto:', s.depPhone, currentY);
+      if (listaCargas.length === 0) {
+        doc.fillColor('#6B7280').font('Helvetica-Oblique').fontSize(9).text('No se registraron cargas familiares.', 60);
+        doc.moveDown(2);
+        return;
+      }
+
+      listaCargas.forEach((dep: any, index: number) => {
+        if (doc.y > 620) doc.addPage();
+
+        const startY = doc.y;
+        const cardWidth = 512;
+        const cardHeight = 95;
+
+        // 2. Tarjeta principal (Fondo blanco, borde gris)
+        doc.roundedRect(50, startY, cardWidth, cardHeight, 8).fill('white').stroke(C_BORDER);
+
+        // 3. Mini-encabezado de la carga (Fondo Gris, Letra Negra)
+        doc.rect(50, startY, 80, 15).fill(C_BG).stroke(C_BORDER);
+        doc.fillColor(C_TEXT).font('Helvetica-Bold').fontSize(8).text(`CARGA N°${index + 1}`, 55, startY + 4);
+
+        // 4. Nombre destacado en Negro
+        doc.fillColor(C_TEXT).font('Helvetica-Bold').fontSize(9).text(dep.nombre?.toUpperCase() || 'SIN NOMBRE', 140, startY + 4, { width: 350, align: 'right' });
+
+        // --- GRID DE DATOS (Mantiene el mismo estilo ordenado) ---
+        let yRow = startY + 25;
+        const col1 = 60;
+        const col2 = 300;
+
+        const drawField = (label: string, value: string, x: number, y: number) => {
+          doc.fillColor('#6B7280').font('Helvetica-Bold').fontSize(7).text(label, x, y);
+          doc.fillColor(C_TEXT).font('Helvetica').fontSize(8).text(value || '---', x, y + 9);
+        };
+
+        drawField('RUT', dep.rut, col1, yRow);
+        drawField('FECHA NACIMIENTO', dep.nacimiento, col2, yRow);
+
+        yRow += 22;
+        drawField('EDAD', (dep.edad || '0') + ' años', col1, yRow);
+        const rel = dep.parentesco === 'Otro' ? `Otro (${dep.otroParentesco || ''})` : dep.parentesco;
+        drawField('PARENTESCO', rel, col2, yRow);
+
+        yRow += 22;
+        const salud = dep.prevision === 'Isapre' ? `Isapre (${dep.isapreNombre || ''})` : 'FONASA';
+        drawField('SISTEMA SALUD', salud, col1, yRow);
+        drawField('CONTACTO', `${dep.telefono || ''} | ${dep.email || ''}`, col2, yRow);
+
+        doc.y = startY + cardHeight + 10;
+      });
+
+      // Resetear color para las siguientes secciones
+      doc.fillColor('black');
+    };
+
+    drawSectionCargas(doc, s);
 
     // --- PÁGINA 2 ---
     doc.addPage();
