@@ -8,6 +8,7 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "moduleResolution": "node",
+    "ignoreDeprecations": "5.0", // <--- AGREGA ESTA LÍNEA AQUÍ
     "outDir": "./dist"
   },
   "include": ["**/*.ts"]
