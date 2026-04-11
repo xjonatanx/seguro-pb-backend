@@ -691,7 +691,7 @@ app.get("/api/admin/generate-pdf/:id", authenticateAdmin, async (req, res) => {
       .font("Helvetica")
       .fillColor("#444444")
       .text(
-        "Información debe ser enviada mediante Correo electrónico a Secretaria Administrativa Yessica Bianchi yessica.bianchi@pybingenieria.cl y Jefa ADM y RR.HH. Natalia Lazo Natalia.lazo@pybingenieria.cl agregando toda la información que señala el formulario.",
+        "Información debe ser enviada mediante Correo electrónico a Secretaria Administrativa Pablo Córdoba pablo.cordova@pybingenieria.cl, Jefa ADM y RR.HH. Natalia Lazo Natalia.lazo@pybingenieria.cl y del Área de Bienestar Antonia Sanchez antonia.sanchez@pybingenieria.cl agregando toda la información que señala el formulario.",
         { align: "left", width: 512 },
       );
     doc.moveDown(0.3);
