@@ -1,36 +1,30 @@
 // "dev": "ts-node-dev index.ts",
 // https://pybingenieriachile.cl/api-seguro
-import bcrypt from 'bcrypt';
-import { db } from './db';
-import { users } from './db/schema';
+import bcrypt from "bcrypt";
+import { db } from "./db";
+import { users } from "./db/schema";
 
 async function createAdminUsers() {
   // 1. Definimos la lista de los 3 elegidos
   const adminsToCreate = [
     {
-      rut: '18.420.862-8',
-      email: 'yonatanpc65@gmail.com',
-      password: 'pb2026admin_y',
-      role: 'admin'
+      rut: "18.420.862-8",
+      email: "yonatanpc65@gmail.com",
+      password: "pb2026admin_y",
+      role: "admin",
     },
     {
-      rut: '19.015.017-8',
-      email: 'natalia@pybingenieria.cl',
-      password: 'sN2S4zrnok',
-      role: 'admin'
+      rut: "19.015.017-8",
+      email: "natalia@pybingenieria.cl",
+      password: "sN2S4zrnok",
+      role: "admin",
     },
     {
-      rut: '20.840.210-2',
-      email: 'yessica@pybingenieria.cl',
-      password: 'SG3GRrKUfd',
-      role: 'admin'
+      rut: "13.541.060-8",
+      email: "williams@pybingenieria.cl",
+      password: "Escr7uFWf3",
+      role: "admin",
     },
-    {
-      rut: '13.541.060-8',
-      email: 'williams@pybingenieria.cl',
-      password: 'Escr7uFWf3',
-      role: 'admin'
-    }
   ];
 
   console.log("🚀 Iniciando creación de administradores...");
@@ -44,7 +38,8 @@ async function createAdminUsers() {
 
       // 3. Insertamos en la base de datos
       // Usamos .onConflictDoUpdate por si el RUT ya existe, para que no explote el script
-      await db.insert(users)
+      await db
+        .insert(users)
         .values({
           rut: admin.rut,
           email: admin.email,
@@ -53,11 +48,11 @@ async function createAdminUsers() {
         })
         .onConflictDoUpdate({
           target: users.rut,
-          set: { 
-            role: 'admin', 
-            password: hashedPassword, 
-            email: admin.email 
-          }
+          set: {
+            role: "admin",
+            password: hashedPassword,
+            email: admin.email,
+          },
         });
 
       console.log(`✅ ${admin.email} ahora es Administrador.`);
