@@ -488,7 +488,6 @@ app.post("/api/submissions/save", authenticateUser, async (req, res) => {
       const pdfBuffer = await generatePDFBuffer(valuesToSave);
 
       const recipients = [
-        "yonatanpc65@gmail.com",
         "natalia.lazo@pybingenieria.cl",
         "pablo.cordova@pybingenieria.cl",
         "antonia.sanchez@pybingenieria.cl",
